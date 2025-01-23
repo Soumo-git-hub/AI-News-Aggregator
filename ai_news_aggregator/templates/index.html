@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI News Aggregator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>AI News Aggregator</h1>
+
+        <!-- Add News Preference Form -->
+        <div class="form-control">
+            <label for="keyword">Add News Preference (Keyword):</label>
+            <input type="text" id="keyword" name="keyword" placeholder="Enter a topic..." required>
+            <button id="addPreference" type="button">Add</button>
+        </div>
+
+        <!-- Fetch News Feed Button -->
+        <div class="form-control">
+            <button id="fetchFeed" type="button">Get Personalized News Feed</button>
+        </div>
+
+        <!-- Placeholder for News Feed -->
+        <div id="newsFeed" class="news-feed"></div>
+
+        <!-- View History Button -->
+        <div class="form-control">
+            <button id="viewHistory" type="button">View Article History</button>
+        </div>
+
+        <!-- Placeholder for Article History -->
+        <div id="articleHistory" class="article-history"></div>
+    </div>
+
+    <script>
+        document.getElementById('addPreference').addEventListener('click', async () => {
+            const keywordInput = document.getElementById('keyword');
+            const keyword = keywordInput.value.trim();
+            
+            if (!keyword) {
+                alert('Please enter a keyword');
+                return;
+            }
+
+            try {
+                const response = await fetch('/add_preference', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ keyword: keyword })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(data.message);
+                    keywordInput.value = ''; // Clear the input field
+                } else {
+                    alert(data.error || 'Failed to add preference');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to add preference');
+            }
+        });
+
+        document.getElementById('fetchFeed').addEventListener('click', async () => {
+            const response = await fetch('/get_feed');
+            const newsFeed = await response.json();
+            const newsFeedDiv = document.getElementById('newsFeed');
+            newsFeedDiv.innerHTML = '';
+
+            if (newsFeed.length > 0) {
+                newsFeed.forEach(article => {
+                    const articleDiv = document.createElement('div');
+                    articleDiv.classList.add('article');
+
+                    const thumbnailHtml = article.image_url ? 
+                        `<img src="${article.image_url}" alt="Article thumbnail" class="article-thumbnail" onerror="this.src='static/images/default-thumbnail.png'">` : 
+                        `<img src="static/images/default-thumbnail.jpg" alt="Default thumbnail" class="article-thumbnail">`;
+
+                    articleDiv.innerHTML = `
+                        ${thumbnailHtml}
+                        <div class="article-content">
+                            <h3>${article.title}</h3>
+                            <p>${article.summary}</p>
+                            <div class="article-actions">
+                                <a href="${article.url}" target="_blank" class="read-more">Read More</a>
+                                <button onclick="listenToArticle('${encodeURIComponent(article.title)}', '${encodeURIComponent(article.summary)}')" class="listen-btn">Listen</button>
+                                <button onclick="saveArticle('${encodeURIComponent(article.title)}', '${encodeURIComponent(article.url)}', '${encodeURIComponent(article.summary)}')" class="save-btn">Save Article</button>
+                            </div>
+                        </div>
+                    `;
+                    newsFeedDiv.appendChild(articleDiv);
+                });
+            } else {
+                newsFeedDiv.innerHTML = '<p>No articles found. Please add a keyword preference.</p>';
+            }
+        });
+
+        document.getElementById('viewHistory').addEventListener('click', async () => {
+            const response = await fetch('/history');
+            const history = await response.json();
+            const articleHistoryDiv = document.getElementById('articleHistory');
+            articleHistoryDiv.innerHTML = '';
+
+            if (history.length > 0) {
+                history.forEach(entry => {
+                    const entryDiv = document.createElement('div');
+                    entryDiv.classList.add('history-entry');
+
+                    entryDiv.innerHTML = `
+                        <h3>${entry.title}</h3>
+                        <p>${entry.summary}</p>
+                        <a href="${entry.url}" target="_blank">Read More</a>
+                        <p><strong>Saved On:</strong> ${entry.timestamp}</p>
+                        <button onclick="listenToArticle('${encodeURIComponent(entry.title)}', '${encodeURIComponent(entry.summary)}')">Listen</button>
+                    `;
+                    articleHistoryDiv.appendChild(entryDiv);
+                });
+            } else {
+                articleHistoryDiv.innerHTML = '<p>No history available.</p>';
+            }
+        });
+
+        async function listenToArticle(title, summary) {
+            try {
+                const response = await fetch('/listen_article', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title: decodeURIComponent(title), summary: decodeURIComponent(summary) }),
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                } else {
+                    alert('Failed to play the article. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error playing audio:', error);
+                alert('Failed to play the article. Please try again.');
+            }
+        }
+
+        // Add this new function for saving articles
+        async function saveArticle(title, url, summary) {
+            try {
+                const response = await fetch('/save_article', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: decodeURIComponent(title),
+                        url: decodeURIComponent(url),
+                        summary: decodeURIComponent(summary)
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Article saved successfully!');
+                } else {
+                    alert(data.error || 'Failed to save article');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to save article');
+            }
+        }
+    </script>
+</body>
+</html>
