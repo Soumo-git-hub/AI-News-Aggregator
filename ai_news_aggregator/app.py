@@ -33,7 +33,7 @@ limiter = Limiter(
 )
 
 # Get API key from environment variable
-NEWS_API_KEY = os.getenv("NEWS_API_KEY", "0b631bbba8cf44a7b0643628fb4da859")
+NEWS_API_KEY = os.getenv("NEWS_API_KEY", "PUT_HERE")
 
 # Database connection pool
 class DatabasePool:
