@@ -5,42 +5,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI News Aggregator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.jpg') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>AI News Aggregator</h1>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="AI News Logo" class="logo-img">
+                <h1>AI News Aggregator</h1>
+            </div>
+            <div class="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </div>
+        </header>
 
-        <!-- Add News Preference Form -->
-        <div class="form-control">
-            <label for="keyword">Add News Preference (Keyword):</label>
-            <input type="text" id="keyword" name="keyword" placeholder="Enter a topic..." required>
-            <button id="addPreference" type="button">Add</button>
+        <main class="main-content">
+            <section class="preferences-section">
+                <div class="form-control">
+                    <div class="input-group">
+                        <input type="text" id="keyword" name="keyword" placeholder="Enter a topic..." required>
+                        <button id="addPreference" type="button" class="add-btn">
+                            <i class="fas fa-plus"></i>
+                            <span>Add</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <button id="fetchFeed" type="button" class="primary-btn">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Get Personalized News Feed</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="news-feed-section">
+                <div id="newsFeed" class="news-feed"></div>
+            </section>
+
+            <section class="history-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-history"></i> Article History</h2>
+                    <button id="viewHistory" type="button" class="secondary-btn">
+                        <i class="fas fa-sync"></i>
+                        <span>Refresh History</span>
+                    </button>
+                </div>
+                <div id="articleHistory" class="article-history"></div>
+            </section>
+        </main>
+
+        <div class="loading-overlay">
+            <div class="spinner"></div>
         </div>
-
-        <!-- Fetch News Feed Button -->
-        <div class="form-control">
-            <button id="fetchFeed" type="button">Get Personalized News Feed</button>
-        </div>
-
-        <!-- Placeholder for News Feed -->
-        <div id="newsFeed" class="news-feed"></div>
-
-        <!-- View History Button -->
-        <div class="form-control">
-            <button id="viewHistory" type="button">View Article History</button>
-        </div>
-
-        <!-- Placeholder for Article History -->
-        <div id="articleHistory" class="article-history"></div>
     </div>
 
     <script>
+        // Add loading state management
+        const loadingOverlay = document.querySelector('.loading-overlay');
+        
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
         document.getElementById('addPreference').addEventListener('click', async () => {
+            showLoading();
             const keywordInput = document.getElementById('keyword');
             const keyword = keywordInput.value.trim();
             
             if (!keyword) {
                 alert('Please enter a keyword');
+                hideLoading();
                 return;
             }
 
@@ -65,9 +105,11 @@
                 console.error('Error:', error);
                 alert('Failed to add preference');
             }
+            hideLoading();
         });
 
         document.getElementById('fetchFeed').addEventListener('click', async () => {
+            showLoading();
             const response = await fetch('/get_feed');
             const newsFeed = await response.json();
             const newsFeedDiv = document.getElementById('newsFeed');
@@ -79,8 +121,8 @@
                     articleDiv.classList.add('article');
 
                     const thumbnailHtml = article.image_url ? 
-                        `<img src="${article.image_url}" alt="Article thumbnail" class="article-thumbnail" onerror="this.src='static/images/default-thumbnail.png'">` : 
-                        `<img src="static/images/default-thumbnail.jpg" alt="Default thumbnail" class="article-thumbnail">`;
+                        `<img src="${article.image_url}" alt="Article thumbnail" class="article-thumbnail" onerror="this.src='static/images/logo.jpg'">` : 
+                        `<img src="static/images/logo.jpg" alt="Default thumbnail" class="article-thumbnail">`;
 
                     articleDiv.innerHTML = `
                         ${thumbnailHtml}
@@ -99,9 +141,11 @@
             } else {
                 newsFeedDiv.innerHTML = '<p>No articles found. Please add a keyword preference.</p>';
             }
+            hideLoading();
         });
 
         document.getElementById('viewHistory').addEventListener('click', async () => {
+            showLoading();
             const response = await fetch('/history');
             const history = await response.json();
             const articleHistoryDiv = document.getElementById('articleHistory');
@@ -113,17 +157,32 @@
                     entryDiv.classList.add('history-entry');
 
                     entryDiv.innerHTML = `
-                        <h3>${entry.title}</h3>
-                        <p>${entry.summary}</p>
-                        <a href="${entry.url}" target="_blank">Read More</a>
-                        <p><strong>Saved On:</strong> ${entry.timestamp}</p>
-                        <button onclick="listenToArticle('${encodeURIComponent(entry.title)}', '${encodeURIComponent(entry.summary)}')">Listen</button>
+                        <div class="history-entry-header">
+                            <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Article thumbnail" class="history-thumbnail">
+                            <div class="history-entry-content">
+                                <h3><i class="fas fa-newspaper"></i> ${entry.title}</h3>
+                                <p class="timestamp"><i class="far fa-clock"></i> ${entry.timestamp}</p>
+                            </div>
+                        </div>
+                        <div class="history-entry-body">
+                            <p><i class="fas fa-quote-left"></i> ${entry.summary}</p>
+                            <div class="history-entry-actions">
+                                <a href="${entry.url}" target="_blank" class="history-btn">
+                                    <i class="fas fa-external-link-alt"></i> Read Article
+                                </a>
+                                <button onclick="listenToArticle('${encodeURIComponent(entry.title)}', '${encodeURIComponent(entry.summary)}')" class="history-btn">
+                                    <i class="fas fa-volume-up"></i> Listen
+                                </button>
+                                ${entry.keyword ? `<span class="keyword-tag"><i class="fas fa-tag"></i> ${entry.keyword}</span>` : ''}
+                            </div>
+                        </div>
                     `;
                     articleHistoryDiv.appendChild(entryDiv);
                 });
             } else {
-                articleHistoryDiv.innerHTML = '<p>No history available.</p>';
+                articleHistoryDiv.innerHTML = '<div class="empty-history"><i class="fas fa-inbox"></i><p>No history available.</p></div>';
             }
+            hideLoading();
         });
 
         async function listenToArticle(title, summary) {
@@ -168,15 +227,70 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    alert('Article saved successfully!');
+                    // Show success message in a more user-friendly way
+                    const successMessage = document.createElement('div');
+                    successMessage.className = 'success-message';
+                    successMessage.innerHTML = `
+                        <i class="fas fa-check-circle"></i>
+                        <span>Article saved successfully!</span>
+                    `;
+                    document.body.appendChild(successMessage);
+                    
+                    // Remove the message after 3 seconds
+                    setTimeout(() => {
+                        successMessage.remove();
+                    }, 3000);
                 } else {
-                    alert(data.error || 'Failed to save article');
+                    // Show error message in a more user-friendly way
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'error-message';
+                    errorMessage.innerHTML = `
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>${data.error || 'Failed to save article'}</span>
+                    `;
+                    document.body.appendChild(errorMessage);
+                    
+                    // Remove the message after 3 seconds
+                    setTimeout(() => {
+                        errorMessage.remove();
+                    }, 3000);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to save article');
+                // Show error message in a more user-friendly way
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'error-message';
+                errorMessage.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Failed to save article. Please try again.</span>
+                `;
+                document.body.appendChild(errorMessage);
+                
+                // Remove the message after 3 seconds
+                setTimeout(() => {
+                    errorMessage.remove();
+                }, 3000);
             }
         }
+
+        // Add theme toggle functionality
+        const themeToggle = document.querySelector('.theme-toggle');
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-theme');
+            const icon = themeToggle.querySelector('i');
+            icon.classList.toggle('fa-moon');
+            icon.classList.toggle('fa-sun');
+        });
+
+        // Add smooth scroll behavior
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
     </script>
 </body>
 </html>

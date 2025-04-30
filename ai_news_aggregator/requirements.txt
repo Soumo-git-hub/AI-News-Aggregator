@@ -1,6 +1,9 @@
-Flask
-beautifulsoup4
-requests
-spacy
-sqlite3
-gunicorn
+Flask==2.3.3
+beautifulsoup4==4.12.2
+requests==2.31.0
+spacy==3.7.2
+gunicorn==21.2.0
+python-dotenv==1.0.0
+Flask-Limiter==3.5.0
+gTTS==2.3.2
+pyttsx3==2.90
